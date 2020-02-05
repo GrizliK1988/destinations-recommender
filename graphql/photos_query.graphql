@@ -1,0 +1,8 @@
+query PoiPhotos($countPerCategory: Int!){
+  photos(countPerCategory: $countPerCategory) {
+    id
+    file
+    name
+    marker
+  }
+}
