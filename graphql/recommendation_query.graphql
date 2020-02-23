@@ -1,0 +1,6 @@
+query RecommendedDestinations($userPreferences: [UserPreference!]!){
+  recommendation(userPreferences: $userPreferences) {
+    destination
+    score
+  }
+}

@@ -2,9 +2,10 @@
 
 use yew::{html, Component, ComponentLink, Html, ShouldRender};
 
-mod layout;
+mod photos;
+mod recommendations;
 
-use layout::Layout;
+use photos::Photos;
 
 struct App {
 }
@@ -26,7 +27,7 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <Layout />
+            <Photos />
         }
     }
 }

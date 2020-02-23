@@ -3,21 +3,22 @@ use yew::services::{ ConsoleService, FetchService };
 use graphql_client::{ GraphQLQuery, Response as GraphQLResponse };
 use yew::services::fetch::{ Request, FetchTask };
 use failure;
-use std::collections::HashMap;
+use crate::recommendations::Recommendations;
 
-struct UserPreference {
-    marker: String,
-    like: bool,
+#[derive(Clone)]
+pub struct UserPreference {
+    pub marker: String,
+    pub like: bool,
 }
 
-pub struct Layout {
+pub struct Photos {
     console: ConsoleService,
     fetch: FetchService,
     link: ComponentLink<Self>,
     task: Option<FetchTask>,
     photos: Vec<poi_photos::PoiPhotosPhotos>,
     active_image_index: usize,
-    user_preferences: Vec<UserPreference>,
+    pub user_preferences: Vec<UserPreference>,
 }
 
 pub enum Msg {
@@ -35,12 +36,12 @@ pub enum Msg {
 )]
 pub struct PoiPhotos;
 
-impl Component for Layout {
+impl Component for Photos {
     type Message = Msg;
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let mut layout = Layout {
+        let mut layout = Photos {
             console: ConsoleService::new(),
             fetch: FetchService::new(),
             link,
@@ -59,34 +60,10 @@ impl Component for Layout {
         let render = {
             match msg {
                 Msg::Like => {
-                    if self.active_image_index < self.photos.len() {
-                        let photo = self.photos.get(self.active_image_index).unwrap();
-                        self.active_image_index += 1;
-
-                        self.user_preferences.push(UserPreference {
-                            marker: photo.marker.clone(),
-                            like: true,
-                        });
-
-                        true
-                    } else {
-                        false
-                    }
+                    self.handle_user_reaction(true)
                 }
                 Msg::Dislike => {
-                    if self.active_image_index < self.photos.len() {
-                        let photo = self.photos.get(self.active_image_index).unwrap();
-                        self.active_image_index += 1;
-
-                        self.user_preferences.push(UserPreference {
-                            marker: photo.marker.clone(),
-                            like: false,
-                        });
-
-                        true
-                    } else {
-                        false
-                    }
+                    self.handle_user_reaction(false)
                 }
                 Msg::PhotosFetched(photos_content) => {
                     let photos: GraphQLResponse<poi_photos::ResponseData> =
@@ -121,62 +98,86 @@ impl Component for Layout {
             }
         };
 
-        html! {
-          <div>
-            <div class="columns is-mobile is-gapless">
-                <div class="column">
-                    <section class="hero">
-                      <div class="hero-body">
-                          <div class="container">
-                              <h1 class="title">
-                                  { "Like your trip" }
-                              </h1>
+        let view = if self.active_image_index == self.photos.len() && self.photos.len() > 0 {
+          html! {
+            <Recommendations user_preferences={ self.user_preferences.clone() } />
+          }
+        } else {
+            html! {
+              <div>
+                <div class="columns is-mobile is-gapless">
+                    <div class="column">
+                        <section class="hero">
+                          <div class="hero-body">
+                              <div class="container">
+                                  <h1 class="title">
+                                      { "Like your trip" }
+                                  </h1>
+                              </div>
                           </div>
-                      </div>
-                    </section>
-                    <div class="card">
-                      <div class="card-image">
-                        <figure class="image">
-                          <img
-                            src={ photo }
-                          />
-                        </figure>
-                      </div>
+                        </section>
+                        <div class="card">
+                          <div class="card-image">
+                            <figure class="image">
+                              <img
+                                src={ photo }
+                              />
+                            </figure>
+                          </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <nav class="navbar is-fixed-bottom">
-              <div class="columns is-mobile is-gapless">
-                <div class="column">
-                  <a
-                    class="button is-large is-fullwidth is-danger"
-                    onclick=self.link.callback(|_| Msg::Dislike)
-                  >
-                    <span class="icon">
-                      <i class="fas fa-thumbs-down fa-lg"></i>
-                    </span>
-                    <span>{ "Move on" }</span>
-                  </a>
-                </div>
-                <div class="column">
-                  <a
-                    class="button is-large is-fullwidth is-success"
-                    onclick=self.link.callback(|_| Msg::Like)
-                  >
-                    <span class="icon">
-                      <i class="fas fa-thumbs-up fa-lg"></i>
-                    </span>
-                    <span>{ "Like it" }</span>
-                  </a>
-                </div>
+                <nav class="navbar is-fixed-bottom">
+                  <div class="columns is-mobile is-gapless">
+                    <div class="column">
+                      <a
+                        class="button is-large is-fullwidth is-danger"
+                        onclick=self.link.callback(|_| Msg::Dislike)
+                      >
+                        <span class="icon">
+                          <i class="fas fa-thumbs-down fa-lg"></i>
+                        </span>
+                        <span>{ "Move on" }</span>
+                      </a>
+                    </div>
+                    <div class="column">
+                      <a
+                        class="button is-large is-fullwidth is-success"
+                        onclick=self.link.callback(|_| Msg::Like)
+                      >
+                        <span class="icon">
+                          <i class="fas fa-thumbs-up fa-lg"></i>
+                        </span>
+                        <span>{ "Like it" }</span>
+                      </a>
+                    </div>
+                  </div>
+                </nav>
               </div>
-            </nav>
-          </div>
-        }
+            }
+        };
+
+        view
     }
 }
 
-impl Layout {
+impl Photos {
+    fn handle_user_reaction(&mut self, like: bool) -> bool {
+        if self.active_image_index < self.photos.len() {
+            let photo = self.photos.get(self.active_image_index).unwrap();
+            self.active_image_index += 1;
+
+            self.user_preferences.push(UserPreference {
+                marker: photo.marker.clone(),
+                like,
+            });
+
+            true
+        } else {
+            false
+        }
+    }
+
     fn fetch_photos(&mut self) -> () {
         let query = PoiPhotos::build_query(poi_photos::Variables {
             count_per_category: 3,
